@@ -10,9 +10,9 @@ from datetime import datetime
 from collections import defaultdict
 import sdl2.sdlmixer as sdlmixer
 import pickle
-import threading # Để chạy đa luồng
+import threading 
 
-from ai_engine import ChessAI # Import file vừa tạo
+from ai_engine import ChessAI 
 from renderer import Renderer
 from compiler import compile_renderer
 from loader.mesh_loader import load_scene, load_mesh
@@ -22,7 +22,7 @@ class Chess3D:
     def __init__(self):
         print("🚀 Đang khởi tạo Chess 3D (Full Fix: Win Logic + History Text)...")
 
-        self.base_path = os.path.dirname(os.path.abspath(__file__)) # Lấy đường dẫn thư mục hiện tại
+        self.base_path = os.path.dirname(os.path.abspath(__file__)) 
         
         self.width = 800
         self.height = 600
@@ -50,11 +50,14 @@ class Chess3D:
         self.promotion_pending = None
         
         # --- TÍNH NĂNG ---
-        self.time_limit = 600.0 # 10 phút
+        self.time_limit = 600.0 
         self.white_time = self.time_limit
         self.black_time = self.time_limit
         self.last_time = time.time()
         self.last_title_update = time.time()
+        
+        # 👇 MỚI: Biến kiểm soát trạng thái bắt đầu trận đấu
+        self.is_match_started = False 
         
         # --- THÊM BIẾN ĐỂ TÍNH FPS ---
         self.frame_count = 0 
@@ -67,7 +70,6 @@ class Chess3D:
         self.board_history = defaultdict(int)
         
         # --- FILE SAVING SETUP ---
-        # Đường dẫn tuyệt đối như bạn yêu cầu
         self.save_folder = os.path.join(self.base_path, "histories")
         if not os.path.exists(self.save_folder):
             os.makedirs(self.save_folder)
@@ -89,22 +91,17 @@ class Chess3D:
         self.renderer.add_light((0, 40, 0), (0, 0, 0))    
         
         self._record_board_state()
-        self.animations = [] # Danh sách chứa các quân cờ đang di chuyển
+        self.animations = [] 
 
         # --- AI SETUP ---
-        self.game_mode = 'pvp' # Mặc định
+        self.game_mode = 'pvp' 
         
         try:
-            # Import class AI
             from ai_engine import ChessAI
-            
-            # 👇 SỬA DÒNG NÀY: Bỏ tham số 'depth=2' đi
             self.ai = ChessAI() 
-            
             self.ai_thinking = False
             self.ai_move_result = None
             print("✅ Đã khởi tạo AI Engine thành công.")
-            
         except Exception as e:
             print(f"⚠️ Lỗi khởi tạo AI: {e}")
             self.ai = None
@@ -119,19 +116,16 @@ class Chess3D:
                 self.audio_enabled = False
             else:
                 self.audio_enabled = True
+                # Tăng số lượng kênh để tránh bị cắt tiếng
+                sdl2.sdlmixer.Mix_AllocateChannels(16)
         except Exception as e:
             print(f"⚠️ Lỗi Audio: {e}")
             self.audio_enabled = False
 
-        # 2. Tải file âm thanh (ĐỊNH DẠNG .WAV hoặc .OGG là tốt nhất)
+        # 2. Tải file âm thanh
         self.sounds = {}
         if self.audio_enabled:
-            # 👇👇👇 BẠN ĐỔI ĐƯỜNG DẪN FILE TẠI ĐÂY NHA 👇👇👇
-            self.sounds = {}
-        if self.audio_enabled:
-            # 👇👇👇 TỰ ĐỘNG TẠO ĐƯỜNG DẪN CHO SOUND 👇👇👇
             sound_dir = os.path.join(self.base_path, "res", "sounds")
-            
             sound_files = {
                 "move": os.path.join(sound_dir, "Move.wav"),
                 "capture": os.path.join(sound_dir, "Capture.wav"),
@@ -142,8 +136,6 @@ class Chess3D:
                 "intro": os.path.join(sound_dir, "Intro.wav"),
                 "start": os.path.join(sound_dir, "Start.wav"),
             }
-            # 👆👆👆 ------------------------------------------ 👆👆👆
-
             for name, path in sound_files.items():
                 if os.path.exists(path):
                     self.sounds[name] = sdl2.sdlmixer.Mix_LoadWAV(path.encode('utf-8'))
@@ -154,22 +146,55 @@ class Chess3D:
 
     def run_ai_logic(self):
         """Hàm này chạy ngầm trong Thread riêng"""
-        
-        # 👇 THÊM DÒNG NÀY: Đợi 1 giây trước khi bắt đầu tính
-        # Giúp game ổn định animation cũ và tạo cảm giác AI đang "nhìn" bàn cờ
         time.sleep(1.0) 
-        
-        # Gọi hàm tính toán bên file ai_engine.py
         move = self.ai.get_best_move(self, 'black')
-        
-        # Lưu kết quả để Main Loop thực hiện
         self.ai_move_result = move 
         self.ai_thinking = False
     
     def play_sound(self, name):
         if self.audio_enabled and name in self.sounds and self.sounds[name]:
-            # Phát âm thanh trên channel còn trống (-1)
             sdl2.sdlmixer.Mix_PlayChannel(-1, self.sounds[name], 0)
+
+    # 👇👇👇 MỚI: HÀM XỬ LÝ INTRO GAME 👇👇👇
+    def _play_opening_sequence(self):
+        """
+        Phát Intro -> Đợi hết nhạc -> Sleep 1s -> Phát Start -> Bắt đầu tính giờ
+        """
+        print("\n🎵 BẮT ĐẦU INTRO SEQUENCE...")
+        self.is_match_started = False # Dừng đồng hồ
+        
+        # 1. Vẽ lại màn hình một lần để người chơi thấy bàn cờ trước khi nhạc chạy
+        self.renderer.render_meshes()
+        self.renderer.render_lights()
+        self.renderer.present()
+
+        if self.audio_enabled:
+            # Phát nhạc Intro
+            self.play_sound("intro")
+            
+            # Vòng lặp chờ nhạc Intro hết
+            # Mix_Playing(-1) trả về số lượng kênh đang phát
+            # Chúng ta "bơm" event (get_events) để cửa sổ không bị treo (Not Responding)
+            while sdl2.sdlmixer.Mix_Playing(-1) > 0:
+                sdl2.SDL_Delay(50) # Chờ 50ms
+                sdl2.ext.get_events() 
+        
+        print("⏳ Intro xong. Sleep 1s...")
+        
+        # 2. Sleep 1s như yêu cầu (Vẫn cần bơm event để tránh treo)
+        end_wait = time.time() + 1.0
+        while time.time() < end_wait:
+            sdl2.SDL_Delay(50)
+            sdl2.ext.get_events()
+
+        # 3. Phát nhạc Start và bắt đầu
+        print("🔔 START GAME! Đồng hồ bắt đầu chạy.")
+        self.play_sound("start")
+        
+        # Reset thời gian tham chiếu để đồng hồ không bị trừ oan khoảng thời gian chờ nhạc
+        self.last_time = time.time()
+        self.is_match_started = True # Cho phép đồng hồ chạy
+    # 👆👆👆 --------------------------------- 👆👆👆
 
     def _start_new_log_file(self):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -186,20 +211,15 @@ class Chess3D:
             print(f"⚠️ Không thể tạo file log: {e}")
 
     def _save_history_to_disk(self):
-        # --- 1. LƯU DẠNG JSON (Giữ nguyên để load game nếu cần) ---
+        # (Giữ nguyên logic cũ của bạn)
         json_moves = []
         cols = ['a','b','c','d','e','f','g','h']
-        
-        # Danh sách tạm để xử lý ghép cặp nước đi cho file Text
         temp_moves_text = [] 
-        
         for i, move in enumerate(self.undo_stack):
             piece = move['piece']
             start = move['start_pos']
             end = move['end_pos']
             is_capture = True if move['captured'] else False
-            
-            # Record cho JSON
             record = {
                 "move_number": i + 1,
                 "color": move['piece'].color,
@@ -211,30 +231,17 @@ class Chess3D:
                 "is_promotion": move['promotion']
             }
             json_moves.append(record)
-            
-            # --- XỬ LÝ FORMAT TEXT CHUẨN CỜ VUA ---
-            # Chuyển tọa độ: row 7 -> 1, row 0 -> 8
             s_sq = f"{cols[start[1]]}{8 - start[0]}" 
             e_sq = f"{cols[end[1]]}{8 - end[0]}"
-            
-            # Ký hiệu quân cờ (Viết tắt tiếng Anh: P, N, B, R, Q, K)
             piece_map = {'Pawn':'', 'Knight':'N', 'Bishop':'B', 'Rook':'R', 'Queen':'Q', 'King':'K'}
             p_char = piece_map.get(type(piece).__name__, '')
-            
-            # Ký hiệu ăn quân
             cap_char = "x" if is_capture else ""
-            
-            # Tạo chuỗi nước đi: VD "Nxe5" hoặc "e4"
-            # Nếu là tốt (Pawn) ăn quân thì phải thêm cột xuất phát: VD "exd5"
             if type(piece).__name__ == 'Pawn' and is_capture:
                  move_str = f"{cols[start[1]]}x{e_sq}"
             else:
                  move_str = f"{p_char}{cap_char}{e_sq}"
-                 
-            # Xử lý Nhập thành
             if move['is_castling']:
                 move_str = "O-O" if end[1] > start[1] else "O-O-O"
-                
             temp_moves_text.append(move_str)
             
         data = {
@@ -243,14 +250,11 @@ class Chess3D:
             "winner": self.winner if self.winner else None,
             "moves": json_moves
         }
-        
-        # Ghi file JSON
         try:
             with open(self.current_log_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
         except Exception: pass
 
-        # --- 2. LƯU DẠNG TEXT (SCORE SHEET - DỄ ĐỌC) ---
         txt_file = self.current_log_file.replace(".json", ".txt")
         try:
             with open(txt_file, "w", encoding="utf-8") as f:
@@ -259,32 +263,25 @@ class Chess3D:
                 f.write("==========================================\n")
                 f.write(f"{'No.':<5} {'White':<15} {'Black':<15}\n")
                 f.write("------------------------------------------\n")
-                
-                # Ghép cặp nước đi: Trắng - Đen
-                # Ví dụ: 1. e4 e5
                 num_moves = len(temp_moves_text)
                 for i in range(0, num_moves, 2):
                     move_num = (i // 2) + 1
                     white_move = temp_moves_text[i]
                     black_move = temp_moves_text[i+1] if (i+1) < num_moves else ""
-                    
                     f.write(f"{move_num:<5}. {white_move:<15} {black_move:<15}\n")
-                
                 if self.game_over:
                     f.write("==========================================\n")
                     f.write(f"RESULT: {self.winner.upper()} WON\n")
         except Exception: pass
 
     def load_and_map_resources(self):
+        # (Giữ nguyên logic cũ của bạn)
         print("📂 Đang tải scene...")
-        # ==============================================================
         path_to_model = os.path.join(self.base_path, "res", "chess_pieces.glb")
         path_to_cache = os.path.join(self.base_path, "res", "chess_pieces.pkl")
-        # ==============================================================
         meshes, texs, uvs, nodes, bounds, pos_list, rot_list = [], [], [], [], [], [], []
         loaded_from_cache = False
 
-        # 1. Thử load từ Cache (nhanh siêu tốc)
         if os.path.exists(path_to_cache):
             try:
                 print("⚡ Tìm thấy cache, đang load nhanh...")
@@ -296,13 +293,9 @@ class Chess3D:
             except Exception as e:
                 print(f"⚠️ Cache lỗi, sẽ load lại file gốc: {e}")
 
-        # 2. Nếu không có cache hoặc lỗi, load từ file GLB (chậm)
         if not loaded_from_cache:
             try:
-                # Load scene từ file gốc
                 meshes, texs, uvs, nodes, bounds, pos_list, rot_list = load_scene(path_to_model, True)
-                
-                # Lưu vào cache cho lần sau
                 with open(path_to_cache, 'wb') as f:
                     pickle.dump([meshes, texs, uvs, nodes, bounds, pos_list, rot_list], f)
                 print("💾 Đã tạo file cache cho lần mở sau.")
@@ -310,7 +303,6 @@ class Chess3D:
                 print(f"\n❌ LỖI: Không thể tải file mô hình: {e}")
                 sys.exit(1)
 
-        # 3. Thêm các mesh vào renderer và map với logic
         for i in range(len(meshes)):
             idx = self.renderer.add_mesh(
                 position=pos_list[i],
@@ -405,25 +397,13 @@ class Chess3D:
 
     def _check_insufficient_material(self):
         pieces = [p for row in self.logic_board for p in row if p]
-        
-        # 1. Nếu còn Tốt (Pawn), Xe (Rook), Hậu (Queen) -> Chắc chắn KHÔNG hòa
         for p in pieces:
             if isinstance(p, (Pawn, Rook, Queen)):
                 return False
-        
-        # --- ĐẾN ĐÂY THÌ TRÊN BÀN CHỈ CÒN VUA, MÃ, TƯỢNG ---
-
-        # 2. Ít hơn 4 quân (tức là 2 hoặc 3 quân) -> HÒA CHẮC CHẮN
-        # (K vs K) hoặc (K vs K+N) hoặc (K vs K+B)
         if len(pieces) < 4:
             return True
-
-        # 3. Trường hợp 4 quân (K+N vs K+N, K+B vs K+B...)
-        # Logic đơn giản cho game 3D: Nếu không còn quân nặng (Xe/Hậu/Tốt), coi như hòa cho đỡ mất thời gian.
-        # (Luật FIDE đoạn này rất phức tạp về màu ô của Tượng, nhưng với game giải trí thì check thế này là đủ tốt)
         if len(pieces) == 4:
-            return True # K+N vs K+N hoặc K+B vs K+B -> Cho hòa luôn
-            
+            return True 
         return False
 
     # ==========================================
@@ -444,15 +424,15 @@ class Chess3D:
         self.black_time = self.time_limit
         self.undo_stack.clear()
         self.draw_offered_by = None
-        self.last_time = time.time()
         
+        self.is_match_started = False # Reset flag này để dừng đồng hồ
+
         self._start_new_log_file()
         
         self.logic_board = [[None for _ in range(8)] for _ in range(8)]
         self.mesh_to_piece.clear()
         self.piece_to_mesh.clear()
         
-        # --- FIX RESET GEOMETRY ---
         w_pawn_donor = None
         b_pawn_donor = None
         for idx, name in self.mesh_names.items():
@@ -473,8 +453,12 @@ class Chess3D:
 
         self._record_board_state()
         self.renderer.update_light()
+        
+        # 👇 GỌI LẠI QUY TRÌNH INTRO 👇
+        self._play_opening_sequence()
 
     def undo_last_move(self):
+        # (Giữ nguyên logic cũ của bạn)
         if not self.undo_stack or self.game_over:
             print("⚠️ Không thể Undo!")
             return
@@ -486,16 +470,12 @@ class Chess3D:
         start_r, start_c = state['start_pos']
         end_r, end_c = state['end_pos']
         
-        # 1. Di chuyển hình 3D về trước
         self._move_piece_3d(piece, start_r, start_c)
-        
-        # 2. Cập nhật logic
         self.logic_board[end_r][end_c] = None
         self.logic_board[start_r][start_c] = piece
         piece.row, piece.col = start_r, start_c
         piece.has_moved = state['has_moved']
         
-        # 3. Khôi phục quân bị ăn
         captured = state['captured']
         if captured:
             cap_r, cap_c = state['captured_pos']
@@ -506,7 +486,6 @@ class Chess3D:
                 self.mesh_to_piece[mid] = captured
                 self.piece_to_mesh[captured] = mid
                 
-        # 4. Khôi phục các biến trạng thái
         self.en_passant_target = state['en_passant_target']
         self.half_move_clock = state['half_move_clock']
         self.white_time = state['white_time']
@@ -632,7 +611,8 @@ class Chess3D:
     # INPUT & UPDATE
     # ==========================================
     def update_clock(self):
-        if not self.game_over and not self.promotion_pending:
+        # 👇 MỚI: Chỉ trừ giờ khi game chưa kết thúc và đã qua giai đoạn Intro (match_started = True)
+        if not self.game_over and not self.promotion_pending and self.is_match_started:
             now = time.time()
             dt = now - self.last_time
             self.last_time = now
@@ -642,6 +622,7 @@ class Chess3D:
             self.last_time = time.time() 
 
     def handle_input(self):
+        # (Giữ nguyên logic cũ của bạn)
         events = sdl2.ext.get_events()
         for event in events:
             if event.type == sdl2.SDL_QUIT: return False
@@ -727,6 +708,7 @@ class Chess3D:
             print("⚠️ Không có lời mời hòa nào!")
 
     def _process_click(self, mx, my):
+        # (Giữ nguyên logic cũ của bạn)
         if self.game_over or not (0 <= my < self.height and 0 <= mx < self.width): return
         hit_id = int(self.renderer.object_buffer[my, mx])
         if hit_id == 255 or hit_id < 0: return
@@ -746,6 +728,7 @@ class Chess3D:
                     self._execute_move(self.selected_piece, row, col)
 
     def _execute_move(self, piece, end_row, end_col):
+        # (Giữ nguyên logic cũ của bạn)
         if self.draw_offered_by is not None and self.draw_offered_by == piece.color:
             pass
         elif self.draw_offered_by is not None and self.draw_offered_by != piece.color:
@@ -823,16 +806,16 @@ class Chess3D:
         self._save_history_to_disk()
         
         if is_capture:
-            self.play_sound("capture") # Có ăn quân -> tiếng Capture
+            self.play_sound("capture") 
         else:
-            self.play_sound("move")    # Đi thường -> tiếng Move
+            self.play_sound("move")    
         self._print_move_to_console(piece, (start_row, start_col), (end_row, end_col), is_capture)
 
         if isinstance(piece, Pawn) and (end_row == 0 or end_row == 7):
             self.promotion_pending = (piece, end_row, end_col)
             move_info['promotion'] = True
             print("👑 Phong cấp! Nhấn Q/R/B/N")
-            self.play_sound("notify") # Phong cấp -> Tiếng thông báo
+            self.play_sound("notify") 
         else:
             self.selected_piece = None
             self.valid_moves = []
@@ -844,41 +827,25 @@ class Chess3D:
             rank = 8 - r 
             file = cols[c]
             return f"{file}{rank}"
-        
         s_txt = to_chess_coord(start[0], start[1])
         e_txt = to_chess_coord(end[0], end[1])
-        
         move_count = (len(self.undo_stack) + 1) // 2
         prefix = "🔹" if piece.color == 'white' else "🔸"
         cap_str = "⚔️ ĂN" if is_capture else "➝"
-        
         print(f"{prefix} Move {move_count}: {piece.color.title()} {piece.symbol} ({s_txt} {cap_str} {e_txt})")
 
     def _move_piece_3d(self, piece, r, c):
         mid = self.piece_to_mesh[piece]
-
-        # Vị trí hiện tại (Điểm xuất phát)
         start_pos = np.copy(self.renderer.pos_list[mid])
-
-        # Tính vị trí đích (Điểm đến)
-        # Lưu ý: Logic tính toán này dựa trên code cũ của bạn
         d_c, d_r = float(c - piece.col), float(r - piece.row)
-
-        # Code cũ của bạn cộng dồn vào pos hiện tại, nhưng vì start_pos lấy từ renderer
-        # nên ta cần tính đích đến tuyệt đối dựa trên ô cờ (row, col) mới để chính xác hơn.
-        # TUY NHIÊN, để an toàn với logic cũ, ta tính delta dựa trên sự chênh lệch:
         target_pos = np.array([start_pos[0] + d_c, start_pos[1], start_pos[2] + d_r], dtype=np.float32)
-
-        # Tạo Animation Info
         anim_data = {
             "mesh_id": mid,
             "start": start_pos,
             "end": target_pos,
             "start_time": time.time(),
-            "duration": 0.3  # <--- THỜI GIAN DI CHUYỂN (giây). Sửa số này để nhanh/chậm
+            "duration": 0.3 
         }
-
-        # Xóa các animation cũ của cùng 1 mesh (nếu user click quá nhanh)
         self.animations = [a for a in self.animations if a["mesh_id"] != mid]
         self.animations.append(anim_data)
 
@@ -926,7 +893,6 @@ class Chess3D:
         self.switch_turn()
 
     def switch_turn(self):
-        # Đổi lượt
         self.turn = 'black' if self.turn == 'white' else 'white'
         self._record_board_state()
         print(f"\n🔄 Lượt của: {self.turn.upper()} | Time: W {int(self.white_time)}s - B {int(self.black_time)}s")
@@ -934,12 +900,9 @@ class Chess3D:
         result = self.check_game_over()
         if result:
             self.game_over = True
-            self.play_sound("victory") # Tiếng chiến thắng
-            
-            # --- XÁC ĐỊNH NGƯỜI THẮNG ---
+            self.play_sound("victory") 
             msg = ""
             if result == "checkmate":
-                # Nếu đến lượt hiện tại mà bị chiếu hết -> Người đó thua -> Đối thủ thắng
                 self.winner = 'black' if self.turn == 'white' else 'white'
                 msg = f"{self.winner.upper()} THẮNG (CHIẾU HẾT)"
             elif result == "timeout_white":
@@ -962,19 +925,13 @@ class Chess3D:
             self._show_game_over_msg(msg)
             self._save_history_to_disk()
         else:
-            # 👇👇👇 THÊM ĐOẠN NÀY VÀO 👇👇👇
-            # TRƯỜNG HỢP GAME VẪN TIẾP TỤC
-            # Kiểm tra xem phe hiện tại (vừa nhận lượt) có đang bị chiếu không?
             if self.is_in_check(self.turn):
                 print(f"⚠️ {self.turn.upper()} ĐANG BỊ CHIẾU!")
-                self.play_sound("check") # <--- Lệnh phát âm thanh Check
-            # 👆👆👆 ----------------------- 👆👆👆
+                self.play_sound("check") 
 
-        # 👇👇👇 THÊM ĐOẠN KÍCH HOẠT AI Ở CUỐI HÀM 👇👇👇
         if not self.game_over and self.game_mode == 'pvai' and self.turn == 'black':
             print("🤖 AI đang suy nghĩ...")
             self.ai_thinking = True
-            # Gọi thread AI chạy ngầm
             threading.Thread(target=self.run_ai_logic, daemon=True).start()
 
     def _show_game_over_msg(self, msg):
@@ -988,23 +945,14 @@ class Chess3D:
     def update_animations(self):
         current_time = time.time()
         completed = []
-
         for anim in self.animations:
-            # Tính toán tiến độ (t đi từ 0.0 đến 1.0)
             elapsed = current_time - anim["start_time"]
             t = elapsed / anim["duration"]
-
             if t >= 1.0:
                 t = 1.0
                 completed.append(anim)
-
-            # Công thức nội suy tuyến tính (Lerp): Pos = Start + (End - Start) * t
-            # Giúp quân cờ trượt từ A sang B
             new_pos = anim["start"] + (anim["end"] - anim["start"]) * t
-
             self.renderer.set_mesh_transform(anim["mesh_id"], position=new_pos)
-
-        # Xóa các animation đã hoàn thành khỏi danh sách
         for c in completed:
             self.animations.remove(c)
 
@@ -1015,8 +963,6 @@ class Chess3D:
         print("   [Z]: Undo (Đi lại)")
         print("   [F]: Resign (Đầu hàng)")
         print("   [H]: Offer Draw (Cầu hòa) / [Y]: Đồng ý hòa")
-
-        # 👇👇👇 THÊM ĐOẠN NÀY: CHỌN CHẾ ĐỘ CHƠI 👇👇👇
         print("\n========================================")
         print("   CHOOSE GAME MODE (Chọn chế độ):")
         print("   [1] Player vs Player (Hai người chơi)")
@@ -1037,7 +983,6 @@ class Chess3D:
                     print("   [2] Medium (Vừa - Biết ăn quân)")
                     print("   [3] Hard (Khó - Tính trước 1 nước)")
                     print("   [4] Expert (Siêu khó - Tính trước 2 nước)")
-                    
                     while True:
                         lvl = input("👉 Chọn độ khó (1-4): ").strip()
                         if lvl in ['1', '2', '3', '4']:
@@ -1055,6 +1000,10 @@ class Chess3D:
         running = True
         self.renderer.show()
         self.renderer.update_light()
+        
+        # 👇 KÍCH HOẠT INTRO SAU KHI CHỌN MODE XONG 👇
+        self._play_opening_sequence()
+        
         try:
             self.last_time = time.time()
             self.frame_count = 0
@@ -1065,7 +1014,6 @@ class Chess3D:
                 self.update_animations()
                 running = self.handle_input()
 
-                # 👇 XỬ LÝ AI ĐI QUÂN 👇
                 if self.ai_move_result:
                     p, r, c = self.ai_move_result
                     print(f"🤖 AI (Lv{self.ai.level}) đi: {p.symbol} tới ({r}, {c})")
@@ -1085,7 +1033,10 @@ class Chess3D:
                         w_m, w_s = divmod(int(self.white_time), 60)
                         b_m, b_s = divmod(int(self.black_time), 60)
                         turn_str = "White" if self.turn == 'white' else "Black"
-                        title = f"3D Chess | FPS: {int(self.fps)} | Turn: {turn_str} | W: {w_m:02}:{w_s:02} | B: {b_m:02}:{b_s:02}"
+                        
+                        # Hiển thị tiêu đề
+                        status = "PLAYING" if self.is_match_started else "WAITING"
+                        title = f"3D Chess [{status}] | FPS: {int(self.fps)} | Turn: {turn_str} | W: {w_m:02}:{w_s:02} | B: {b_m:02}:{b_s:02}"
                         sdl2.SDL_SetWindowTitle(self.renderer.window.window, title.encode('utf-8'))
                     else:
                         win_txt = self.winner.upper() if self.winner else "GAME OVER"
@@ -1105,7 +1056,7 @@ class Chess3D:
                 
                 self.renderer.update_light()
                 self.renderer.present()
-                sdl2.SDL_Delay(1)  # Giới hạn FPS để tránh sử dụng CPU quá mức
+                sdl2.SDL_Delay(1) 
         except KeyboardInterrupt:
             print("\n⚠️ Stop.")
         except Exception as e:
