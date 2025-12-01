@@ -77,7 +77,7 @@ Below is the full structure and detailed description of each directory. (**Note:
 #### Installation
 
 ```bash
-pip install numba numpy scipy trimesh Pillow
+pip install numba numpy scipy trimesh Pillow PySDL2
 ```
 
 #### Run
