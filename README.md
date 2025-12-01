@@ -72,12 +72,12 @@ Below is the full structure and detailed description of each directory. (**Note:
 
 * Python 3.10+
 * pip
-* Libraries: numba, numpy, scipy, trimesh, Pillow
+* Libraries: numba, numpy, scipy, trimesh, Pillow, pysdl2
 
 #### Installation
 
 ```bash
-pip install numba numpy scipy trimesh Pillow PySDL2
+pip install numba numpy scipy trimesh Pillow pysdl2 pysdl2-dll
 ```
 
 #### Run
