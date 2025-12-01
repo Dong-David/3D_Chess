@@ -139,6 +139,8 @@ class Chess3D:
                 "victory": os.path.join(sound_dir, "Victory.wav"),
                 "check": os.path.join(sound_dir, "Check.wav"),
                 "draw": os.path.join(sound_dir, "Draw.wav"),
+                "intro": os.path.join(sound_dir, "Intro.wav"),
+                "start": os.path.join(sound_dir, "Start.wav"),
             }
             # 👆👆👆 ------------------------------------------ 👆👆👆
 
@@ -776,7 +778,7 @@ class Chess3D:
         if target:
             mid = self.piece_to_mesh[target]
             self.renderer.set_mesh_visible_flag(mid, False)
-
+        
         if isinstance(piece, Pawn) and (end_row, end_col) == self.en_passant_target:
             cap_row = start_row
             cap_p = self.logic_board[cap_row][end_col]
