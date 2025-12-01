@@ -1,0 +1,23 @@
+{
+    "last_updated": "2025-11-30 13:38:36",
+    "status": "ongoing",
+    "winner": null,
+    "moves": [
+        {
+            "move_number": 1,
+            "color": "white",
+            "piece": "Pawn",
+            "start": [
+                6,
+                0
+            ],
+            "end": [
+                4,
+                0
+            ],
+            "is_capture": false,
+            "is_castling": false,
+            "is_promotion": false
+        }
+    ]
+}

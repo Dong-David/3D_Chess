@@ -1,0 +1,32 @@
+CHESS 3D - GAME HISTORY
+Date: 2025-11-30 21:10:33
+==========================================
+No.   White           Black          
+------------------------------------------
+1    . b4              d5             
+2    . Bb2             f6             
+3    . c4              dxc4           
+4    . Qa4             Qxd2           
+5    . Qxd2            a5             
+6    . bxa5            Rxa5           
+7    . Qxa5            Bf5            
+8    . Qxc7            Bxb1           
+9    . Qc8             Kf7            
+10   . Rxb1            f5             
+11   . Qxb8            f4             
+12   . Be5             b6             
+13   . Qc7             Kg6            
+14   . Qc6             Kg5            
+15   . h4              Kf5            
+16   . Rb5             f3             
+17   . Qe6             Kxe6           
+18   . Bxg7            Bxg7           
+19   . Rxb6            Kf7            
+20   . Qa5             fxg2           
+21   . Bxg2            Be5            
+22   . Qa6             Nf6            
+23   . Qa7             Ba1            
+24   . f3              Nd5            
+25   . Rb8             Rxb8           
+26   . Qxb8            Ne3            
+27   . Qb2             Bxb2           
