@@ -1056,7 +1056,7 @@ class Chess3D:
                 
                 self.renderer.update_light()
                 self.renderer.present()
-                sdl2.SDL_Delay(1) 
+                sdl2.SDL_Delay(1) setting
         except KeyboardInterrupt:
             print("\n⚠️ Stop.")
         except Exception as e:
