@@ -80,3 +80,28 @@ python3 main.py
 ```
 
 ---
+
+## 🤖 AI Engine & Difficulty
+
+The AI is built on a **Minimax** algorithm optimized with **Numba** for near C++ performance in Python. It features **Alpha-Beta Pruning** to reduce search space and **Quiescence Search** to avoid horizon effects in tactical positions.
+
+The AI evaluates positions using material value and **Piece-Square Tables (PST)** to understand positional play (e.g., controlling the center, king safety).
+
+### Difficulty Levels
+The engine scales difficulty by limiting the number of nodes searched:
+
+* **Level 1 (Easy):** ~1,000 nodes. Quick moves, makes basic tactical errors.
+* **Level 2 (Medium):** ~10,000 nodes. Decent play, avoids hanging pieces.
+* **Level 3 (Hard):** ~100,000 nodes. Strong tactical awareness, sees 3-4 ply deep.
+* **Level 4 (Very Hard):** ~1,000,000 nodes. Deep calculation, very challenging for casual players.
+* **Level 5 (Expert):** ~10,000,000 nodes. Near-instant deep search (thanks to Numba), plays effectively like a strong club player.
+
+---
+
+## 🧩 Future Development
+
+- [ ] Implement Opening Books (polyglot/bin).
+- [ ] Endgame Tablebases integration.
+- [ ] Piece animations (smooth interpolation for moves).
+- [ ] Advanced graphical effects (Shadow mapping, Reflections).
+- [ ] LAN / Online Multiplayer support.
