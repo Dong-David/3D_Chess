@@ -1,80 +1,71 @@
 # 3D Chess
 
-**3D Chess** is a 3D chess simulation project with a rendering core built using SDL2, Numba, and NumPy. The goal is to create an intuitive, interactive environment that is easily scalable for developing advanced features like AI.
+**3D Chess** is a high-performance 3D chess simulation built from scratch using Python. The project leverages **SDL2** for rendering and **Numba** for accelerating computational logic. The goal is to create a visually intuitive, interactive environment capable of running advanced AI algorithms without compromising frame rates.
 
 ---
 
 <img width="824" height="650" alt="Screenshot 2025-12-06 at 21 29 42" src="https://github.com/user-attachments/assets/80302d4e-ebf0-483b-b621-c329470830f9" />
 
+---
+
 ## 📌 Key Features
 
-* 3D rendering of the chessboard and pieces.
-* Flexible camera control (pan, zoom, rotate view).
-* Player interaction handling: piece selection, valid move highlighting.
-* Movement logic strictly adhering to standard chess rules.
-* Scalable code architecture for adding new features.
+* **High-Performance Rendering:** Custom 3D engine using SDL2 and NumPy.
+* **Advanced AI Engine:** Numba-accelerated Minimax algorithm with Alpha-Beta Pruning and Quiescence Search.
+* **Multithreading:** AI calculations run on a separate daemon thread to ensure the UI remains responsive (no freezing during "thinking" time).
+* **Interactive Camera:** Flexible control (pan, zoom, rotate) to view the board from any angle.
+* **Game Logic:** Strict adherence to standard chess rules, including Castling, En Passant, and Promotion.
+* **Scalable Architecture:** Modular design separating rendering, game logic, and AI computation.
 
 ---
 
 ## 📁 Directory Structure
 
-Below is the full structure and detailed description of each directory. (**Note:** the `__pycache__` directory contains Python cache files; it does not affect the code and can be ignored.)
+Below is the structure of the project source code.
 
 ```text
 3D_Chess/
 │
 ├── main.py
-│   • Main entry point for the Python version.
-│   • Initializes the game, renderer, loads resources, and runs the main loop.
+│   • Entry point. Initializes the game loop, renderer, and handles thread management.
+│   • Bridges the UI events with the AI logic.
+│
+├── chess_ai.py
+│   • The "brain" of the computer.
+│   • Contains the ChessAI class, Numba-compiled Minimax engine, and evaluation functions (PST).
 │
 ├── chess_pieces.py
-│   • Definitions for chess pieces, attributes, and model loading data.
-│   • Handles piece types, IDs, colors, and mapping to 3D models.
+│   • Definitions for chess pieces, attributes, and model mapping.
 │
 ├── compiler/
-│   • Processor and compiler for Numba JIT functions.
-│   • Checks shader errors, supports shader loading and linking.
+│   • Numba JIT compiler configurations and shader management.
 │
 ├── renderer/
-│   • The entire 3D rendering system.
-│   • Camera, lighting, shaders, model drawing, board drawing, view control.
-│   • Execution of per-frame render functions.
+│   • Core 3D rendering system (Camera, Lighting, Shaders, Draw calls).
 │
 ├── loader/
-│   • Resource loader for `.glb`, `.pkl` models, and textures.
-│   • Converts model data into drawable OpenGL formats.
+│   • Resource loader for .glb models and textures.
 │
 ├── histories/
-│   • Stores game history.
-│   • JSON format: records all moves.
-│   • TXT format: summary or simplified history.
+│   • Stores game logs in JSON and TXT formats.
 │
 ├── res/
-│   ├── chess_pieces.glb
-│   │   • 3D model file for all chess pieces (GLB format).
-│   │
-│   ├── chess_pieces.pkl
-│   │   • Pre-processed data for faster loading.
-│   │
-│   └── sounds/
-│       • Game sound assets:
-│       • Move.wav – Piece movement sound.
-│       • Capture.wav – Piece capture sound.
-│       • Check.wav – Check warning sound.
-│       • Notify.wav – Notification sound.
-│       • Victory.wav – Victory sound.
+│   ├── chess_pieces.glb   • 3D models for pieces.
+│   ├── chess_pieces.pkl   • Optimized cache for faster loading.
+│   └── sounds/            • Audio assets (Move, Capture, Check, Victory).
+
 ```
 
 ---
 
 ## 🚀 Installation & Usage
+
 ### 🐍 Python Version
 
 #### Requirements
 
 * Python 3.10+
-* pip
-* Libraries: numba, numpy, scipy, trimesh, Pillow, pysdl2
+* **Libraries:** `numba`, `numpy`, `scipy`, `trimesh`, `Pillow`, `pysdl2`
 
 #### Installation
 
@@ -87,20 +78,5 @@ pip install numba numpy scipy trimesh Pillow pysdl2 pysdl2-dll
 ```bash
 python3 main.py
 ```
+
 ---
-
-## 🤖 AI Modes
-
-The project supports 4 AI levels:
-
-* **Easy** – Random moves, no calculation.
-* **Medium** – Prioritizes capturing pieces when possible.
-* **Hard** – Looks ahead 1 move to avoid losing pieces or to gain an advantage.
-* **Expert** – Looks ahead 2 moves (Minimax depth 2), defends well, and counter-attacks.
-
-## 🧩 Future Development
-
-* Add AI algorithms (Minimax, Alpha-Beta)
-* Piece animations
-* Shadow and reflection effects
-* Online / LAN mode
