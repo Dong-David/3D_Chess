@@ -4,6 +4,8 @@
 
 ---
 
+<img width="824" height="650" alt="Screenshot 2025-12-06 at 21 29 42" src="https://github.com/user-attachments/assets/80302d4e-ebf0-483b-b621-c329470830f9" />
+
 ## 📌 Key Features
 
 * 3D rendering of the chessboard and pieces.
