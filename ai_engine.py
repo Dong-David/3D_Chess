@@ -87,11 +87,11 @@ PST[KING] = np.flip(king_safety_pst, axis=0)
 # PHẦN 2: LÕI NUMBA (ENGINE)
 # ==========================================
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def is_on_board(r, c):
     return 0 <= r < 8 and 0 <= c < 8
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def is_square_attacked_numba(board, r, c, attacker_color):
     """Kiểm tra ô (r, c) có bị phe attacker_color tấn công không."""
     # 1. Pawn
@@ -146,7 +146,7 @@ def is_square_attacked_numba(board, r, c, attacker_color):
 
     return False
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def get_legal_moves_numba(board, color, en_passant_col, can_castle, only_captures):
     """
     Sinh nước đi hợp lệ.
@@ -184,7 +184,18 @@ def get_legal_moves_numba(board, color, en_passant_col, can_castle, only_capture
                 if not only_captures:
                     nr, nc = r + direction, c
                     if is_on_board(nr, nc) and board[nr, nc] == 0:
-                        targets[t_count] = [nr, nc, 0]; t_count += 1
+                        # KIỂM TRA PHONG CẤP (Promotion)
+                        is_promo = (color == 1 and nr == 0) or (color == -1 and nr == 7)
+                        if is_promo:
+                            # Sinh 4 nước đi cho 4 loại quân
+                            targets[t_count] = [nr, nc, 3]; t_count += 1 # 3 = Queen
+                            targets[t_count] = [nr, nc, 4]; t_count += 1 # 4 = Knight
+                            targets[t_count] = [nr, nc, 5]; t_count += 1 # 5 = Rook
+                            targets[t_count] = [nr, nc, 6]; t_count += 1 # 6 = Bishop
+                        else:
+                            targets[t_count] = [nr, nc, 0]; t_count += 1
+                            
+                        # Nước đi đôi (Double push)
                         nnr = r + 2 * direction
                         if r == start_row and is_on_board(nnr, nc) and board[nnr, nc] == 0:
                             targets[t_count] = [nnr, nc, 0]; t_count += 1
@@ -196,8 +207,17 @@ def get_legal_moves_numba(board, color, en_passant_col, can_castle, only_capture
                         target_p = board[nr, nc]
                         # Ăn thường
                         if target_p != 0 and (target_p * color < 0):
-                            targets[t_count] = [nr, nc, 0]; t_count += 1
-                        # En Passant
+                            # KIỂM TRA PHONG CẤP KHI ĂN
+                            is_promo = (color == 1 and nr == 0) or (color == -1 and nr == 7)
+                            if is_promo:
+                                targets[t_count] = [nr, nc, 3]; t_count += 1
+                                targets[t_count] = [nr, nc, 4]; t_count += 1
+                                targets[t_count] = [nr, nc, 5]; t_count += 1
+                                targets[t_count] = [nr, nc, 6]; t_count += 1
+                            else:
+                                targets[t_count] = [nr, nc, 0]; t_count += 1
+                        
+                        # En Passant (Giữ nguyên logic cũ)
                         en_passant_rank = 3 if color == 1 else 4
                         if r == en_passant_rank and nc == en_passant_col and target_p == 0:
                             targets[t_count] = [nr, nc, 1]; t_count += 1
@@ -289,7 +309,7 @@ def get_legal_moves_numba(board, color, en_passant_col, can_castle, only_capture
 
     return moves[:count]
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def evaluate_board_numba(board):
     score = 0
     for r in range(8):
@@ -307,7 +327,7 @@ def evaluate_board_numba(board):
 # ==========================================
 # QUIESCENCE SEARCH (TÌM KIẾM YÊN TĨNH)
 # ==========================================
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def q_search_negamax(board, alpha, beta, color, node_count, node_limit):
     # --- CHECK NODE LIMIT ---
     node_count[0] += 1
@@ -341,16 +361,23 @@ def q_search_negamax(board, alpha, beta, color, node_count, node_limit):
         board[r2, c2] = moving_piece
         board[r1, c1] = 0
         
+        # --- LOGIC PHONG CẤP MỚI ---
         promoted = False
-        if abs(moving_piece) == PAWN and (r2 == 0 or r2 == 7):
-            board[r2, c2] = QUEEN * color
+        if flag >= 3:
             promoted = True
+            new_type = QUEEN
+            if flag == 4: new_type = KNIGHT
+            elif flag == 5: new_type = ROOK
+            elif flag == 6: new_type = BISHOP
+            board[r2, c2] = new_type * color
+        # ----------------------------
             
         score = -q_search_negamax(board, -beta, -alpha, -color, node_count, node_limit)
         
+        # Undo move
         board[r1, c1] = moving_piece
         board[r2, c2] = captured
-        if promoted: board[r1, c1] = PAWN * color
+        if promoted: board[r1, c1] = PAWN * color # Trả lại quân Tốt gốc
         
         if score >= beta:
             return beta
@@ -362,7 +389,7 @@ def q_search_negamax(board, alpha, beta, color, node_count, node_limit):
 # ==========================================
 # MINIMAX ENGINE (MAIN)
 # ==========================================
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def minimax_numba_engine(board, depth, alpha, beta, is_maximizing, en_passant_col, can_castle, node_count, node_limit):
     # --- CHECK NODE LIMIT ---
     node_count[0] += 1
@@ -413,10 +440,16 @@ def minimax_numba_engine(board, depth, alpha, beta, is_maximizing, en_passant_co
             board[r2, c2] = moving_piece
             board[r1, c1] = 0
             
+            # --- LOGIC PHONG CẤP MỚI (WHITE) ---
             promoted = False
-            if abs(moving_piece) == PAWN and r2 == 0:
-                board[r2, c2] = QUEEN * color
+            if flag >= 3:
                 promoted = True
+                new_type = QUEEN
+                if flag == 4: new_type = KNIGHT
+                elif flag == 5: new_type = ROOK
+                elif flag == 6: new_type = BISHOP
+                board[r2, c2] = new_type * color # color là 1
+            # -----------------------------------
             
             if flag == 1:
                 ep_backup_val = board[r1, c2]
@@ -458,10 +491,16 @@ def minimax_numba_engine(board, depth, alpha, beta, is_maximizing, en_passant_co
             board[r2, c2] = moving_piece
             board[r1, c1] = 0
             
+            # --- LOGIC PHONG CẤP MỚI (BLACK) ---
             promoted = False
-            if abs(moving_piece) == PAWN and r2 == 7:
-                board[r2, c2] = QUEEN * color
+            if flag >= 3:
                 promoted = True
+                new_type = QUEEN
+                if flag == 4: new_type = KNIGHT
+                elif flag == 5: new_type = ROOK
+                elif flag == 6: new_type = BISHOP
+                board[r2, c2] = new_type * color # color là -1
+            # -----------------------------------
                 
             if flag == 1:
                 ep_backup_val = board[r1, c2]
@@ -561,10 +600,24 @@ class ChessAI:
                 print(f"AI ({color}): No moves found.")
                 return None
 
+            # Xác định loại quân phong cấp dựa vào flag
+            promotion_type = None
+            if flag == 3: promotion_type = 'Queen'
+            elif flag == 4: promotion_type = 'Knight'
+            elif flag == 5: promotion_type = 'Rook'
+            elif flag == 6: promotion_type = 'Bishop'
+
             piece_obj = game.logic_board[r1][c1]
-            print(f"AI ({color}, Lv{self.level}) move: {type(piece_obj).__name__} ({r1},{c1}) -> ({r2},{c2}) | Nodes: {node_count[0]}")
-            return piece_obj, r2, c2
+            
+            # In ra log để kiểm tra
+            promo_text = f" -> Promote to {promotion_type}" if promotion_type else ""
+            print(f"AI ({color}, Lv{self.level}) move: {type(piece_obj).__name__} ({r1},{c1}) -> ({r2},{c2}){promo_text} | Nodes: {node_count[0]}")
+            
+            # Trả về thêm promotion_type (None nếu không phong cấp)
+            return piece_obj, r2, c2, promotion_type
             
         except Exception as e:
             print(f"AI Critical Error: {e}")
+            import traceback
+            traceback.print_exc()
             return None
