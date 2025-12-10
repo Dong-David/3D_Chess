@@ -10,7 +10,7 @@
 
 ## 📌 Key Features
 
-* **High-Performance Rendering:** Custom 3D engine using SDL2 and NumPy.
+* **Rendering:** Custom 3D engine using SDL2 and NumPy.
 * **Advanced AI Engine:** Numba-accelerated Minimax algorithm with Alpha-Beta Pruning and Quiescence Search.
 * **Multithreading:** AI calculations run on a separate daemon thread to ensure the UI remains responsive (no freezing during "thinking" time).
 * **Interactive Camera:** Flexible control (pan, zoom, rotate) to view the board from any angle.
