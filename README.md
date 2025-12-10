@@ -1,6 +1,6 @@
 # 3D Chess
 
-**3D Chess** is a high-performance 3D chess simulation built from scratch using Python. The project leverages **SDL2** for rendering and **Numba** for accelerating computational logic. The goal is to create a visually intuitive, interactive environment capable of running advanced AI algorithms without compromising frame rates.
+**3D Chess** is a 3D chess simulation built from scratch using Python. The project leverages **SDL2** for rendering and **Numba** for accelerating computational logic. The goal is to create a visually intuitive, interactive environment capable of running advanced AI algorithms without compromising frame rates.
 
 ---
 
